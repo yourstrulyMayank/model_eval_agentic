@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Evaluator</title>
+    <style>
+    body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f7f7;
+            min-height: 100vh;
+            color: #333;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: #f7f7f7;
+        }
+        header img {
+            height: 75px;
+            transition: transform 0.3s ease;
+        }
+        header img:hover {
+            transform: scale(1.05);
+        }
+        header h1 {
+            color: #0071e3;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            flex: 1;
+        }
+        nav {
+            width: 100%;
+            text-align: left;
+            padding: 10px 20px;
+            background-color: #005bb5;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            margin-right: 20px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        nav a.greyed {
+            color: #ccc;
+            pointer-events: none;
+        }
+        nav a:hover:not(.greyed) {
+            background-color: #0071e3;
+        }
+        .back-button {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        @media (max-width: 700px) {
+            header {
+                flex-direction: column;
+                padding: 10px 5px;
+            }
+            header h1 {
+                font-size: 1.5rem;
+            }
+            nav {
+                padding: 8px 5px;
+            }
+        }
+
+    h1 {
+        color: #0071e3;
+        text-align: center;
+        margin-top: 10px;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    .categories-grid {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 40px 0;
+        min-height: 60vh;
+    }
+    .category-card {
+        background: rgba(255, 255, 255, 0.55);
+        border-radius: 32px;
+        padding: 60px 80px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        min-width: 500px;
+        max-width: 900px;
+        width: 100%;
+        margin: auto;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        transition: box-shadow 0.3s;
+    }
+    .category-card:hover {
+        box-shadow: 0 12px 48px 0 rgba(31, 38, 135, 0.45);
+    }
+    .category-card h2 {
+        color: #36373b;
+        margin-bottom: 25px;
+        font-size: 32px;
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-shadow: 0 2px 8px rgba(102,126,234,0.08);
+    }
+    .model {
+        font-size: 22px;
+        margin-bottom: 15px;
+        text-align: center;
+        color: #4a5568;
+    }
+    .buttons {
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+    .eval-btn, .cstm-eval-btn {
+        padding: 14px 32px;
+        border: none;
+        border-radius: 16px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: 600;
+        background: rgba(37, 131, 34, 0.85);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(102,126,234,0.12);
+        transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+    }
+    .eval-btn:hover, .cstm-eval-btn:hover {
+        background: #764ba2;
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(118,75,162,0.18);
+    }
+
+    .dropdown-container {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+    .apple-dropdown {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 14px 18px;
+        font-size: 18px;
+        color: #2d3748;
+        cursor: pointer;
+        outline: none;
+        box-shadow: 0 2px 6px rgba(44,62,80,0.1);
+        width: 100%;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+    .dropdown-box {
+        flex: 1;
+        max-width: 250px;
+        background: linear-gradient(135deg, rgba(245, 129, 62, 0.5), rgba(37, 118, 240, 0.4));
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dropdown-box::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+        transform: rotate(45deg);
+        transition: all 0.6s ease;
+    }
+
+    .dropdown-box:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+    }
+
+    .dropdown-box:hover::before {
+        left: 100%;
+    }
+
+    .dropdown-box h3 {
+        text-align: center;
+        color: #36373b;
+        font-size: 20px;
+        margin-bottom: 12px;
+        font-weight: 600;
+        margin-top: 0;
+        position: relative;
+        z-index: 1;
+    }
+        .apple-dropdown:hover {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .apple-dropdown.selected {
+        background: linear-gradient(135deg, rgba(37, 131, 34, 0.2), rgba(37, 131, 34, 0.1));
+        border: 2px solid #258322;
+        box-shadow: 0 4px 12px rgba(37, 131, 34, 0.25);
+        transform: scale(1.02);
+    }
+
+    @media (max-width: 700px) {
+        .dropdown-container {
+            flex-direction: column;
+            gap: 10px;
+        }
+        .apple-dropdown {
+            max-width: 100%;
+        }
+    }
+    .toggle-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        background: #f7f7f7;
+    }
+
+    .toggle-label {
+        font-size: 18px;
+        font-weight: 600;
+        color: #36373b;
+        margin-right: 15px;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 60px;
+        height: 30px;
+        background: #ccc;
+        border-radius: 30px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .toggle-switch.active {
+        background: #258322;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 24px;
+        height: 24px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+    }
+
+    .toggle-switch.active .toggle-slider {
+        transform: translateX(30px);
+    }
+
+    .agentic-grid {
+        display: none;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        padding: 40px 60px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .agentic-grid.active {
+        display: grid;
+    }
+
+    .agentic-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        text-align: center;
+    }
+
+    .agentic-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.3);
+    }
+
+    .agentic-card h3 {
+        color: #36373b;
+        font-size: 24px;
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+
+    .agentic-card p {
+        color: #4a5568;
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .agentic-card .card-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+    }
+
+    @media (max-width: 700px) {
+        .agentic-grid {
+            grid-template-columns: 1fr;
+            padding: 20px;
+        }
+    }
+</style>
+</style>
+</head>
+<body>
+    <header>
+    <img src="/static/infosys.png" alt="Logo">
+    <h1>Model Evaluation Dashboard</h1>
+    <img src="/static/ABCBank.png" alt="Logo">
+</header>
+<nav>
+    <a href="/" class="back-button" title="Back to Dashboard">←Back to Solutions Dashboard</a>
+</nav>
+<div class="toggle-container">
+    <span class="toggle-label">Agentic AI Mode</span>
+    <div class="toggle-switch" id="agenticToggle" onclick="toggleAgenticMode()">
+        <div class="toggle-slider"></div>
+    </div>
+</div>
+<div class="agentic-grid" id="agenticGrid">
+    <div class="agentic-card" onclick="navigateToLLMStandard()">
+        <div class="card-icon">🤖</div>
+        <h3>LLM Standard Evaluation</h3>
+        <p>Evaluate LLM models with standard benchmarks</p>
+    </div>
+    
+    <div class="agentic-card" onclick="navigateToLLMCustom()">
+        <div class="card-icon">⚙️</div>
+        <h3>LLM Custom Evaluation</h3>
+        <p>Create custom evaluation scenarios for LLM models</p>
+    </div>
+    
+    <div class="agentic-card" onclick="navigateToMLStandard()">
+        <div class="card-icon">📊</div>
+        <h3>ML Standard Evaluation</h3>
+        <p>Evaluate ML models with standard metrics</p>
+    </div>
+    
+    <div class="agentic-card" onclick="navigateToMLCustom()">
+        <div class="card-icon">🔧</div>
+        <h3>ML Custom Evaluation</h3>
+        <p>Create custom evaluation scenarios for ML models</p>
+    </div>
+    
+    <div class="agentic-card" onclick="navigateToAgentic()">
+        <div class="card-icon">🚀</div>
+        <h3>Agentic Evaluation</h3>
+        <p>Advanced agentic AI evaluation workflows</p>
+    </div>
+</div>
+    <div class="categories-grid" style="grid-template-columns: 1fr;">
+        
+        <div class="category-card" style="margin: auto;">
+            <h2>Models Available</h2>
+            <div class="model">
+                
+                <div class="dropdown-container">
+    <div class="dropdown-box">
+        <h3>LLM Models</h3>
+        <select id="llm-dropdown" class="apple-dropdown" onchange="handleDropdownChange('llm')">
+            <option value="" selected disabled>Select a Model</option>
+            <option value="Compliance Assist">Compliance Assist</option>
+            <option value="Wealth Assist">Wealth Assist</option>
+        </select>
+    </div>
+    
+    <div class="dropdown-box">
+        <h3>ML Models</h3>
+        <select id="ml-dropdown" class="apple-dropdown" onchange="handleDropdownChange('ml')">
+            <option value="" selected disabled>Select a Model</option>
+            <option value="Capital Risk">Capital Risk</option>
+        </select>
+    </div>
+</div>
+                <br>
+                
+                <div class="buttons">
+                    <form id="standard-eval-form" method="post">
+                        <input type="hidden" name="benchmark" id="benchmark-input-llm-1">
+                        <button class="eval-btn" type="submit" onclick="setBenchmarkAndRoute('standard')">Standard Evaluation</button>
+                    </form>
+                    <form id="custom-eval-form" method="get">
+                        <button class="cstm-eval-btn" type="submit" onclick="setBenchmarkAndRoute('custom')">Custom Evaluation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    <script>
+        let selectedType = null; // 'llm' or 'ml'
+        let selectedModel = null;
+
+        function handleDropdownChange(type) {
+            const llmDropdown = document.getElementById('llm-dropdown');
+            const mlDropdown = document.getElementById('ml-dropdown');
+            
+            if (type === 'llm') {
+                selectedType = 'llm';
+                selectedModel = llmDropdown.value;
+                mlDropdown.selectedIndex = 0; // Reset ML dropdown
+                llmDropdown.classList.add('selected');
+                mlDropdown.classList.remove('selected');
+            } else {
+                selectedType = 'ml';
+                selectedModel = mlDropdown.value;
+                llmDropdown.selectedIndex = 0; // Reset LLM dropdown
+                mlDropdown.classList.add('selected');
+                llmDropdown.classList.remove('selected');
+            }
+        }
+
+        function setBenchmarkAndRoute(type) {
+            if (!selectedModel || !selectedType) {
+                alert('Please select a model first');
+                return false;
+            }
+            
+            document.getElementById('benchmark-input-llm-1').value = selectedModel;
+
+            let form, route;
+            if (selectedType === 'ml') {
+                if (type === 'standard') {
+                    form = document.getElementById('standard-eval-form');
+                    route = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
+                    form.action = route;
+                } else {
+                    form = document.getElementById('custom-eval-form');
+                    route = "{{ url_for('ml_s_c.custom_ml', model_name='capital_risk', subcategory='supervised') }}";
+                    form.action = route;
+                }
+            } else {
+                if (type === 'standard') {
+                    form = document.getElementById('standard-eval-form');
+                    route = "{{ url_for('evaluate_llm', model_name='__MODEL__') }}";
+                    form.action = route.replace('__MODEL__', encodeURIComponent(selectedModel));
+                } else {
+                    form = document.getElementById('custom-eval-form');
+                    route = "{{ url_for('custom_llm', model_name='__MODEL__') }}";
+                    form.action = route.replace('__MODEL__', encodeURIComponent(selectedModel));
+                }
+            }
+            form.submit();
+        }
+        function toggleAgenticMode() {
+    const toggle = document.getElementById('agenticToggle');
+    const agenticGrid = document.getElementById('agenticGrid');
+    const categoriesGrid = document.querySelector('.categories-grid');
+    
+    toggle.classList.toggle('active');
+    
+    if (toggle.classList.contains('active')) {
+        agenticGrid.classList.add('active');
+        categoriesGrid.style.display = 'none';
+    } else {
+        agenticGrid.classList.remove('active');
+        categoriesGrid.style.display = 'flex';
+    }
+}
+
+    function navigateToLLMStandard() {
+        window.location.href = "{{ url_for('evaluate_llm', model_name='Compliance Assist') }}";
+    }
+
+    function navigateToLLMCustom() {
+        window.location.href = "{{ url_for('custom_llm', model_name='Compliance Assist') }}";
+    }
+
+    function navigateToMLStandard() {
+        window.location.href = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
+    }
+
+    function navigateToMLCustom() {
+        window.location.href = "{{ url_for('ml_s_c.custom_ml', model_name='capital_risk', subcategory='supervised') }}";
+    }
+
+    function navigateToAgentic() {
+        window.location.href = "/agentic-evaluation";
+    }
+    </script>
+</body>
+</html>
