@@ -344,16 +344,21 @@
     </div>
 </div>
 <div class="agentic-grid" id="agenticGrid">
+    <div class="agentic-card" onclick="navigateToTestCaseGeneration()">
+        <div class="card-icon">🌐</div>
+        <h3>Test Case Generation</h3>
+        <p>Generate custom test-cases for model evaluaiton</p>
+    </div>
     <div class="agentic-card" onclick="navigateToLLMStandard()">
-        <div class="card-icon">🤖</div>
+        <div class="card-icon">💬</div>
         <h3>LLM Standard Evaluation</h3>
         <p>Evaluate LLM models with standard benchmarks</p>
     </div>
     
     <div class="agentic-card" onclick="navigateToLLMCustom()">
-        <div class="card-icon">⚙️</div>
+        <div class="card-icon">💬</div>
         <h3>LLM Custom Evaluation</h3>
-        <p>Create custom evaluation scenarios for LLM models</p>
+        <p>Evaluate LLM models with custom testcases</p>
     </div>
     
     <div class="agentic-card" onclick="navigateToMLStandard()">
@@ -363,13 +368,13 @@
     </div>
     
     <div class="agentic-card" onclick="navigateToMLCustom()">
-        <div class="card-icon">🔧</div>
+        <div class="card-icon">📊</div>
         <h3>ML Custom Evaluation</h3>
-        <p>Create custom evaluation scenarios for ML models</p>
+        <p>Evaluate LLM models with custom testcases</p>
     </div>
     
     <div class="agentic-card" onclick="navigateToAgentic()">
-        <div class="card-icon">🚀</div>
+        <div class="card-icon">🤖</div>
         <h3>Agentic Evaluation</h3>
         <p>Advanced agentic AI evaluation workflows</p>
     </div>
@@ -503,6 +508,10 @@
 
     function navigateToAgentic() {
         window.location.href = "/agentic-evaluation";
+    }
+
+    function navigateToTestCaseGeneration() {
+        window.location.href = "{{ url_for('test_case_generation') }}";
     }
     </script>
 </body>

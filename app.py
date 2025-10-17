@@ -16,6 +16,9 @@ from collections import defaultdict
 import contextlib
 import threading
 import uuid
+from openai import OpenAI
+from werkzeug.utils import secure_filename
+import PyPDF2
 # from weasyprint import HTML, CSS
 
 from llm_tool_bigbench_utils import ( run_evaluation_in_background,
@@ -720,6 +723,165 @@ from routes.ml.supervised.custom.ml_supervised_custom import ml_s_c_bp
 ## ML Blueprints ##
 app.register_blueprint(ml_s_t_mlflow_bp)
 app.register_blueprint(ml_s_c_bp)
+
+# Configuration
+TCG_UPLOAD_FOLDER = 'uploads/test_case_generation/models'
+ALLOWED_MODEL_CARD = {'pdf'}
+ALLOWED_TEST_FORMAT = {'csv', 'xlsx', 'xls'}
+os.makedirs(TCG_UPLOAD_FOLDER, exist_ok=True)
+
+model_data = {
+    'Compliance Assist': {
+        'model_card': 'Compliance Assist helps with regulatory compliance tasks',
+        'test_format': 'test_cases/compliance_assist.csv'
+    },
+    'Wealth Assist': {
+        'model_card': 'Wealth Assist provides wealth management guidance',
+        'test_format': 'test_cases/wealth_assist.csv'
+    },
+    'Capital Risk': {
+        'model_card': 'Capital Risk assesses financial risk metrics',
+        'test_format': 'test_cases/capital_risk.csv'
+    }
+}
+
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def extract_text_from_pdf(pdf_path):
+    """Extract text from PDF model card"""
+    text = ""
+    with open(pdf_path, 'rb') as file:
+        pdf_reader = PyPDF2.PdfReader(file)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+    return text
+
+def read_test_format(file_path):
+    """Read test format CSV/XLSX and return sample structure"""
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.read_excel(file_path)
+    
+    # Get column names and first few rows as example
+    columns = df.columns.tolist()
+    sample_rows = df.head(3).to_dict('records')
+    
+    return {
+        'columns': columns,
+        'sample_data': sample_rows,
+        'total_rows': len(df)
+    }
+
+@app.route('/test-case-generation')
+def test_case_generation():
+    return render_template('test_case_generation.html')
+
+@app.route('/upload-new-model', methods=['POST'])
+def upload_new_model():
+    try:
+        if 'model_card' not in request.files or 'test_format' not in request.files:
+            return jsonify({'error': 'Both model card and test format files are required'}), 400
+        
+        model_card_file = request.files['model_card']
+        test_format_file = request.files['test_format']
+        
+        if model_card_file.filename == '' or test_format_file.filename == '':
+            return jsonify({'error': 'No files selected'}), 400
+        
+        if not allowed_file(model_card_file.filename, ALLOWED_MODEL_CARD):
+            return jsonify({'error': 'Model card must be a PDF file'}), 400
+        
+        if not allowed_file(test_format_file.filename, ALLOWED_TEST_FORMAT):
+            return jsonify({'error': 'Test format must be CSV or XLSX file'}), 400
+        
+        # Generate model name from model card filename
+        model_name = secure_filename(model_card_file.filename.rsplit('.', 1)[0])
+        
+        # Create directory for this model
+        model_dir = os.path.join(UPLOAD_FOLDER, model_name)
+        os.makedirs(model_dir, exist_ok=True)
+        
+        # Save files
+        model_card_path = os.path.join(model_dir, 'model_card.pdf')
+        test_format_path = os.path.join(model_dir, 'test_format.' + test_format_file.filename.rsplit('.', 1)[1])
+        
+        model_card_file.save(model_card_path)
+        test_format_file.save(test_format_path)
+        
+        # Extract model card text
+        model_card_text = extract_text_from_pdf(model_card_path)
+        
+        # Store model data
+        model_data[model_name] = {
+            'model_card': model_card_text,
+            'test_format': test_format_path
+        }
+        
+        return jsonify({
+            'success': True,
+            'model_name': model_name
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate-test-cases', methods=['POST'])
+def generate_test_cases():
+    try:
+        data = request.json
+        user_message = data.get('message')
+        selected_model = data.get('model')
+        
+        if not selected_model or selected_model not in model_data:
+            return jsonify({'error': 'Invalid model selected'}), 400
+        
+        # Get model information
+        model_info = model_data[selected_model]
+        model_card_text = model_info['model_card']
+        test_format_path = model_info['test_format']
+        
+        # Read test format structure
+        test_format_info = read_test_format(test_format_path)
+        
+        # Create prompt for LLM
+        prompt = f"""You are a test case generation assistant for the model: {selected_model}
+
+        Model Information:
+        {model_card_text[:1000]}  # Truncate if too long
+
+        Test Case Format:
+        Columns: {', '.join(test_format_info['columns'])}
+
+        Sample Test Cases:
+        {json.dumps(test_format_info['sample_data'], indent=2)}
+
+        User Request: {user_message}
+
+        Generate test cases in the same format as the samples above. Provide them in a clear, structured format that matches the columns. Generate 3-5 relevant test cases based on the user's request."""
+
+        # Call LLM (using Claude as example)
+        client = OpenAI(api_key="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")
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+
+        llm_response = response.choices[0].message.content
+        
+        return jsonify({
+            'response': llm_response
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':
