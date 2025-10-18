@@ -1,11 +1,12 @@
 # app.py - Enhanced Flask App
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response, send_from_directory, session
 import os
 import threading
 import json
 from datetime import datetime
 from io import BytesIO
 import base64
+import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
@@ -729,19 +730,20 @@ TCG_UPLOAD_FOLDER = 'uploads/test_case_generation/models'
 ALLOWED_MODEL_CARD = {'pdf'}
 ALLOWED_TEST_FORMAT = {'csv', 'xlsx', 'xls'}
 os.makedirs(TCG_UPLOAD_FOLDER, exist_ok=True)
-
+OLLAMA_API_URL = "http://localhost:11434/api/generate" 
+EXISTING_MODELS = ['Compliance Assist', 'Wealth Assist', 'Capital Risk']
 model_data = {
     'Compliance Assist': {
         'model_card': 'Compliance Assist helps with regulatory compliance tasks',
-        'test_format': 'test_cases/compliance_assist.csv'
+        'test_format': r'uploads/test_case_generation/models/compliance_assist/compliance_assist_sample.csv'
     },
     'Wealth Assist': {
         'model_card': 'Wealth Assist provides wealth management guidance',
-        'test_format': 'test_cases/wealth_assist.csv'
+        'test_format': r'uploads/test_case_generation/models/wealth_assist/wealth_assist_sample.csv'
     },
     'Capital Risk': {
         'model_card': 'Capital Risk assesses financial risk metrics',
-        'test_format': 'test_cases/capital_risk.csv'
+        'test_format': r'uploads/test_case_generation/models/capital_risk/capital_risk_sample.csv'
     }
 }
 
@@ -749,8 +751,16 @@ model_data = {
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-def extract_text_from_pdf(pdf_path):
-    """Extract text from PDF model card"""
+def extract_text_from_pdf(file_stream):
+    """Extract text from a PDF file-like object."""
+    text = ""
+    pdf_reader = PyPDF2.PdfReader(file_stream)  # Use the file-like object directly
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    return text
+
+def extract_text_from_pdf_path(pdf_path):
+    """Extract text from PDF file path"""
     text = ""
     with open(pdf_path, 'rb') as file:
         pdf_reader = PyPDF2.PdfReader(file)
@@ -758,14 +768,13 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text()
     return text
 
-def read_test_format(file_path):
-    """Read test format CSV/XLSX and return sample structure"""
-    if file_path.endswith('.csv'):
-        df = pd.read_csv(file_path)
+def read_test_format_from_file(file_obj, filename):
+    """Read test format CSV/XLSX from file object (in-memory)"""
+    if filename.endswith('.csv'):
+        df = pd.read_csv(file_obj)
     else:
-        df = pd.read_excel(file_path)
+        df = pd.read_excel(file_obj)
     
-    # Get column names and first few rows as example
     columns = df.columns.tolist()
     sample_rows = df.head(3).to_dict('records')
     
@@ -775,8 +784,70 @@ def read_test_format(file_path):
         'total_rows': len(df)
     }
 
+def read_test_format_from_path(file_path):
+    """Read test format CSV/XLSX from file path"""
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.read_excel(file_path)
+    
+    columns = df.columns.tolist()
+    sample_rows = df.head(3).to_dict('records')
+    
+    return {
+        'columns': columns,
+        'sample_data': sample_rows,
+        'total_rows': len(df)
+    }
+
+def get_model_data_from_uploads(model_name):
+    """Get model card and test format from uploads folder for existing models"""
+    # Normalize model name to filename (e.g., "Compliance Assist" -> "compliance_assist")
+    # filename = model_name.lower().replace(' ', '_')
+    
+    # model_card_path = os.path.join(TCG_UPLOAD_FOLDER, f"{filename}_model_card.pdf")
+    
+    # Try different extensions for test format
+    # test_format_path = None
+    # for ext in ['csv', 'xlsx', 'xls']:
+    #     path = os.path.join(TCG_UPLOAD_FOLDER, f"{filename}_test_format.{ext}")
+    #     if os.path.exists(path):
+    #         test_format_path = path
+    #         break
+    
+    # if not os.path.exists(model_card_path) or not test_format_path:
+    #     return None
+    
+    model_card_text = model_data[model_name]['model_card']#extract_text_from_pdf_path(model_card_path)
+    test_format_info = read_test_format_from_path(model_data[model_name]['test_format'])#read_test_format_from_path(test_format_path)
+    
+    return {
+        'model_card': model_card_text,
+        'test_format': test_format_info
+    }
+
+def call_ollama_llm(prompt, model="llama3.2"):
+    """Call Ollama API with the given prompt"""
+    try:
+        response = requests.post(
+            OLLAMA_API_URL,
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=10000
+        )
+        response.raise_for_status()
+        return response.json()['response']
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error calling Ollama API: {str(e)}")
+    
 @app.route('/test-case-generation')
 def test_case_generation():
+    # Clear any temporary model data from session when page loads
+    if 'temp_models' in session:
+        session.pop('temp_models')
     return render_template('test_case_generation.html')
 
 @app.route('/upload-new-model', methods=['POST'])
@@ -800,25 +871,19 @@ def upload_new_model():
         # Generate model name from model card filename
         model_name = secure_filename(model_card_file.filename.rsplit('.', 1)[0])
         
-        # Create directory for this model
-        model_dir = os.path.join(UPLOAD_FOLDER, model_name)
-        os.makedirs(model_dir, exist_ok=True)
+        # Extract data directly from the FileStorage object
+        model_card_text = extract_text_from_pdf(model_card_file.stream)  # Use .stream for in-memory file
+        test_format_info = read_test_format_from_file(test_format_file.stream, test_format_file.filename)
         
-        # Save files
-        model_card_path = os.path.join(model_dir, 'model_card.pdf')
-        test_format_path = os.path.join(model_dir, 'test_format.' + test_format_file.filename.rsplit('.', 1)[1])
+        # Store in session (in-memory, will be cleared on refresh/session end)
+        if 'temp_models' not in session:
+            session['temp_models'] = {}
         
-        model_card_file.save(model_card_path)
-        test_format_file.save(test_format_path)
-        
-        # Extract model card text
-        model_card_text = extract_text_from_pdf(model_card_path)
-        
-        # Store model data
-        model_data[model_name] = {
+        session['temp_models'][model_name] = {
             'model_card': model_card_text,
-            'test_format': test_format_path
+            'test_format': test_format_info
         }
+        session.modified = True
         
         return jsonify({
             'success': True,
@@ -835,22 +900,33 @@ def generate_test_cases():
         user_message = data.get('message')
         selected_model = data.get('model')
         
-        if not selected_model or selected_model not in model_data:
+        if not selected_model:
+            return jsonify({'error': 'No model selected'}), 400
+        
+        # Check if it's a temporary uploaded model
+        model_info = None
+        if 'temp_models' in session and selected_model in session['temp_models']:
+            temp_model = session['temp_models'][selected_model]
+            model_info = {
+                'model_card': temp_model['model_card'],
+                'test_format': temp_model['test_format']
+            }
+        # Check if it's an existing model
+        elif selected_model in EXISTING_MODELS:
+            model_info = get_model_data_from_uploads(selected_model)
+            if not model_info:
+                return jsonify({'error': f'Model files not found in uploads folder for {selected_model}'}), 400
+        else:
             return jsonify({'error': 'Invalid model selected'}), 400
         
-        # Get model information
-        model_info = model_data[selected_model]
         model_card_text = model_info['model_card']
-        test_format_path = model_info['test_format']
-        
-        # Read test format structure
-        test_format_info = read_test_format(test_format_path)
+        test_format_info = model_info['test_format']
         
         # Create prompt for LLM
         prompt = f"""You are a test case generation assistant for the model: {selected_model}
 
         Model Information:
-        {model_card_text[:1000]}  # Truncate if too long
+        {model_card_text[:1500]}
 
         Test Case Format:
         Columns: {', '.join(test_format_info['columns'])}
@@ -860,20 +936,34 @@ def generate_test_cases():
 
         User Request: {user_message}
 
-        Generate test cases in the same format as the samples above. Provide them in a clear, structured format that matches the columns. Generate 3-5 relevant test cases based on the user's request."""
+        Generate 3-5 relevant test cases in the EXACT same format as the samples above. 
+        IMPORTANT: Return ONLY a valid JSON array of objects, where each object represents one test case with the exact column names.
+        Do not include any explanation or markdown formatting, just the raw JSON array.
 
-        # Call LLM (using Claude as example)
-        client = OpenAI(api_key="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")
+        Example format:
+        [
+        {{"column1": "value1", "column2": "value2"}},
+        {{"column1": "value3", "column2": "value4"}}
+        ]"""
 
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-
-        llm_response = response.choices[0].message.content
+        # Call Ollama LLM
+        llm_response = call_ollama_llm(prompt, model="llama3.2")
         
+        # Try to parse JSON from response
+        import re
+        try:
+            # Extract JSON array from response
+            json_match = re.search(r'\[.*\]', llm_response, re.DOTALL)
+            if json_match:
+                table_data = json.loads(json_match.group())
+                return jsonify({
+                    'response': f'Generated {len(table_data)} test cases:',
+                    'table_data': table_data
+                })
+        except:
+            pass
+        
+        # If JSON parsing fails, return as text
         return jsonify({
             'response': llm_response
         })
@@ -882,6 +972,8 @@ def generate_test_cases():
         return jsonify({
             'error': str(e)
         }), 500
+    
+
 
 
 if __name__ == '__main__':

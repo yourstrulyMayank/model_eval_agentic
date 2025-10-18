@@ -286,7 +286,7 @@
     }
 
     .agentic-card {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        background: linear-gradient(135deg, rgba(245, 129, 62, 0.5), rgba(37, 118, 240, 0.4));
         border-radius: 20px;
         padding: 40px;
         box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
@@ -325,6 +325,28 @@
             padding: 20px;
         }
     }
+    .agentic-dropdown {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 16px;
+        color: #2d3748;
+        cursor: pointer;
+        outline: none;
+        margin-top: 15px;
+        box-shadow: 0 2px 6px rgba(44,62,80,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .agentic-dropdown:hover {
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .agentic-card {
+        cursor: pointer;
+    }
 </style>
 </style>
 </head>
@@ -345,39 +367,58 @@
 </div>
 <div class="agentic-grid" id="agenticGrid">
     <div class="agentic-card" onclick="navigateToTestCaseGeneration()">
-        <div class="card-icon">🌐</div>
-        <h3>Test Case Generation</h3>
-        <p>Generate custom test-cases for model evaluaiton</p>
-    </div>
-    <div class="agentic-card" onclick="navigateToLLMStandard()">
-        <div class="card-icon">💬</div>
-        <h3>LLM Standard Evaluation</h3>
-        <p>Evaluate LLM models with standard benchmarks</p>
-    </div>
-    
-    <div class="agentic-card" onclick="navigateToLLMCustom()">
-        <div class="card-icon">💬</div>
-        <h3>LLM Custom Evaluation</h3>
-        <p>Evaluate LLM models with custom testcases</p>
-    </div>
-    
-    <div class="agentic-card" onclick="navigateToMLStandard()">
-        <div class="card-icon">📊</div>
-        <h3>ML Standard Evaluation</h3>
-        <p>Evaluate ML models with standard metrics</p>
-    </div>
-    
-    <div class="agentic-card" onclick="navigateToMLCustom()">
-        <div class="card-icon">📊</div>
-        <h3>ML Custom Evaluation</h3>
-        <p>Evaluate LLM models with custom testcases</p>
-    </div>
-    
-    <div class="agentic-card" onclick="navigateToAgentic()">
-        <div class="card-icon">🤖</div>
-        <h3>Agentic Evaluation</h3>
-        <p>Advanced agentic AI evaluation workflows</p>
-    </div>
+    <div class="card-icon">🌐</div>
+    <h3>Test Case Generation</h3>
+    <p>Generate custom test-cases for model evaluation</p>
+</div>
+
+<div class="agentic-card" onclick="handleAgenticCardClick(event, 'llm-standard')">
+    <div class="card-icon">💬</div>
+    <h3>LLM Standard Evaluation</h3>
+    <p>Evaluate LLM models with standard benchmarks</p>
+    <select class="agentic-dropdown" id="llm-standard-dropdown" onclick="event.stopPropagation()">
+        <option value="" selected disabled>Select a Model</option>
+        <option value="Compliance Assist">Compliance Assist</option>
+        <option value="Wealth Assist">Wealth Assist</option>
+    </select>
+</div>
+
+<div class="agentic-card" onclick="handleAgenticCardClick(event, 'llm-custom')">
+    <div class="card-icon">💬</div>
+    <h3>LLM Custom Evaluation</h3>
+    <p>Evaluate LLM models with custom testcases</p>
+    <select class="agentic-dropdown" id="llm-custom-dropdown" onclick="event.stopPropagation()">
+        <option value="" selected disabled>Select a Model</option>
+        <option value="Compliance Assist">Compliance Assist</option>
+        <option value="Wealth Assist">Wealth Assist</option>
+    </select>
+</div>
+
+<div class="agentic-card" onclick="handleAgenticCardClick(event, 'ml-standard')">
+    <div class="card-icon">📊</div>
+    <h3>ML Standard Evaluation</h3>
+    <p>Evaluate ML models with standard metrics</p>
+    <select class="agentic-dropdown" id="ml-standard-dropdown" onclick="event.stopPropagation()">
+        <option value="" selected disabled>Select a Model</option>
+        <option value="Capital Risk">Capital Risk</option>
+    </select>
+</div>
+
+<div class="agentic-card" onclick="handleAgenticCardClick(event, 'ml-custom')">
+    <div class="card-icon">📊</div>
+    <h3>ML Custom Evaluation</h3>
+    <p>Evaluate ML models with custom testcases</p>
+    <select class="agentic-dropdown" id="ml-custom-dropdown" onclick="event.stopPropagation()">
+        <option value="" selected disabled>Select a Model</option>
+        <option value="Capital Risk">Capital Risk</option>
+    </select>
+</div>
+
+<div class="agentic-card" onclick="navigateToAgentic()">
+    <div class="card-icon">🤖</div>
+    <h3>Agentic Evaluation</h3>
+    <p>Advanced agentic AI evaluation workflows</p>
+</div>
 </div>
     <div class="categories-grid" style="grid-template-columns: 1fr;">
         
@@ -475,34 +516,54 @@
             form.submit();
         }
         function toggleAgenticMode() {
-    const toggle = document.getElementById('agenticToggle');
-    const agenticGrid = document.getElementById('agenticGrid');
-    const categoriesGrid = document.querySelector('.categories-grid');
-    
-    toggle.classList.toggle('active');
-    
-    if (toggle.classList.contains('active')) {
-        agenticGrid.classList.add('active');
-        categoriesGrid.style.display = 'none';
-    } else {
-        agenticGrid.classList.remove('active');
-        categoriesGrid.style.display = 'flex';
-    }
-}
+            const toggle = document.getElementById('agenticToggle');
+            const agenticGrid = document.getElementById('agenticGrid');
+            const categoriesGrid = document.querySelector('.categories-grid');
+            
+            toggle.classList.toggle('active');
+            
+            if (toggle.classList.contains('active')) {
+                agenticGrid.classList.add('active');
+                categoriesGrid.style.display = 'none';
+                localStorage.setItem('agenticToggleState', 'active');
+            } else {
+                agenticGrid.classList.remove('active');
+                categoriesGrid.style.display = 'flex';
+                localStorage.setItem('agenticToggleState', 'inactive');
+            }
+        }
 
     function navigateToLLMStandard() {
-        window.location.href = "{{ url_for('evaluate_llm', model_name='Compliance Assist') }}";
+        const dropdown = document.getElementById('llm-standard-dropdown');
+        window.location.href = "{{ url_for('evaluate_llm', model_name='__MODEL__') }}".replace('__MODEL__', encodeURIComponent(dropdown.value));
     }
 
     function navigateToLLMCustom() {
-        window.location.href = "{{ url_for('custom_llm', model_name='Compliance Assist') }}";
+        const dropdown = document.getElementById('llm-custom-dropdown');
+        window.location.href = "{{ url_for('custom_llm', model_name='__MODEL__') }}".replace('__MODEL__', encodeURIComponent(dropdown.value));
     }
 
     function navigateToMLStandard() {
-        window.location.href = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
-    }
+    const dropdown = document.getElementById('ml-standard-dropdown');
+    
+    // Create a form dynamically
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
+    
+    // Add the benchmark input
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'benchmark';
+    input.value = dropdown.value;
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
 
     function navigateToMLCustom() {
+        const dropdown = document.getElementById('ml-custom-dropdown');
         window.location.href = "{{ url_for('ml_s_c.custom_ml', model_name='capital_risk', subcategory='supervised') }}";
     }
 
@@ -513,6 +574,37 @@
     function navigateToTestCaseGeneration() {
         window.location.href = "{{ url_for('test_case_generation') }}";
     }
+    function handleAgenticCardClick(event, type) {
+        const dropdownId = type + '-dropdown';
+        const dropdown = document.getElementById(dropdownId);
+        
+        if (!dropdown.value) {
+            alert('Please select a model first');
+            return;
+        }
+        
+        if (type === 'llm-standard') {
+            navigateToLLMStandard();
+        } else if (type === 'llm-custom') {
+            navigateToLLMCustom();
+        } else if (type === 'ml-standard') {
+            navigateToMLStandard();
+        } else if (type === 'ml-custom') {
+            navigateToMLCustom();
+        }
+    }
+    window.addEventListener('DOMContentLoaded', function() {
+        const savedState = localStorage.getItem('agenticToggleState');
+        if (savedState === 'active') {
+            const toggle = document.getElementById('agenticToggle');
+            const agenticGrid = document.getElementById('agenticGrid');
+            const categoriesGrid = document.querySelector('.categories-grid');
+            
+            toggle.classList.add('active');
+            agenticGrid.classList.add('active');
+            categoriesGrid.style.display = 'none';
+        }
+    });
     </script>
 </body>
 </html>
