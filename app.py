@@ -893,6 +893,8 @@ def upload_new_model():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+from collections import OrderedDict
+
 @app.route('/generate-test-cases', methods=['POST'])
 def generate_test_cases():
     try:
@@ -936,7 +938,7 @@ def generate_test_cases():
 
         User Request: {user_message}
 
-        Generate 3-5 relevant test cases in the EXACT same format as the samples above. 
+        Generate 5 relevant test cases in the EXACT same format as the samples above. MAINTAIN COLUMN ORDER.
         IMPORTANT: Return ONLY a valid JSON array of objects, where each object represents one test case with the exact column names.
         Do not include any explanation or markdown formatting, just the raw JSON array.
 
@@ -956,9 +958,17 @@ def generate_test_cases():
             json_match = re.search(r'\[.*\]', llm_response, re.DOTALL)
             if json_match:
                 table_data = json.loads(json_match.group())
+                
+                # Enforce original column order
+                ordered_table_data = [
+                    OrderedDict((col, row.get(col, "")) for col in test_format_info['columns'])
+                    for row in table_data
+                ]
+                
                 return jsonify({
-                    'response': f'Generated {len(table_data)} test cases:',
-                    'table_data': table_data
+                    'response': f'Generated {len(ordered_table_data)} test cases:',
+                    'table_data': ordered_table_data,
+                    'columns': test_format_info['columns']
                 })
         except:
             pass
@@ -972,6 +982,40 @@ def generate_test_cases():
         return jsonify({
             'error': str(e)
         }), 500
+
+@app.route('/download-test-cases', methods=['POST'])
+def download_test_cases():
+    try:
+        data = request.json
+        test_cases = data.get('test_cases', [])
+        model_name = data.get('model_name', 'test_cases')
+        column_order = data.get('column_order', [])
+        
+        if not test_cases:
+            return jsonify({'error': 'No test cases to download'}), 400
+        
+        # Create DataFrame and enforce column order
+        df = pd.DataFrame(test_cases)
+        
+        # Reorder columns if column_order is provided
+        if column_order:
+            # Only include columns that exist in both column_order and df
+            ordered_columns = [col for col in column_order if col in df.columns]
+            df = df[ordered_columns]
+        
+        # Generate CSV
+        output = BytesIO()
+        df.to_csv(output, index=False, encoding='utf-8')
+        output.seek(0)
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename="{model_name}_test_cases.csv"'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
 @app.route('/agentic-evaluation')
 def agentic_evaluation():
@@ -1076,6 +1120,21 @@ def process_agentic_request():
             'log': f'Error in agentic processing: {str(e)}',
             'log_type': 'error'
         }), 500
+
+@app.route('/check_ml_status/<model_name>')
+def check_ml_status(model_name):
+    """Check ML evaluation status"""
+    try:
+        # Import your ML status checking function
+        from routes.ml.supervised.tool.mlflow.ml_supervised_tool_mlflow import get_evaluation_status
+        
+        status = get_evaluation_status(model_name)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        })
 
 
 if __name__ == '__main__':

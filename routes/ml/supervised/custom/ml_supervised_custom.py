@@ -25,11 +25,11 @@ evaluation_progress = {}
 @ml_s_c_bp.route('/custom_ml/<model_name>/<subcategory>')
 def custom_ml(model_name, subcategory):
     """Custom ML evaluation page with results display"""
-    agentic_request = session.pop('agentic_request', None)
-    auto_start = False
+    # agentic_request = session.pop('agentic_request', None)
+    # auto_start = False
     
-    if agentic_request and agentic_request.get('eval_type') == 'custom':
-        auto_start = True
+    # if agentic_request and agentic_request.get('eval_type') == 'custom':
+    #     auto_start = True
     try:
         # Get uploaded files
         upload_dir = os.path.join(UPLOAD_FOLDER, model_name)

@@ -60,18 +60,25 @@
             display: flex;
             padding: 30px;
             gap: 30px;
-            height: calc(100vh - 200px);
+            height: 100vh;
+            width: 95%;
+            overflow: hidden;
         }
 
         .left-panel {
-            width: 300px;
-            background: rgba(255, 255, 255, 0.55);
+            width: auto;
+            background: linear-gradient(135deg, #f3e5f5 0%, #eeb0c2ff 100%);
+            border: 1px solid rgba(233, 30, 99, 0.3);
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
+            height: auto;
+            min-height: 90vh;
+            padding-bottom: 2rem;
+            box-sizing: border-box;
+            box-shadow: 0 4px 16px rgba(233, 30, 99, 0.2);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            
         }
 
         .left-panel h2 {
@@ -157,15 +164,21 @@
 
         .right-panel {
             flex: 1;
-            background: rgba(255, 255, 255, 0.55);
+            background: linear-gradient(135deg, #e6dadaff 0%, #365874ff 100%);
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.2);
+            box-shadow: 0 4px 16px rgba(33, 150, 243, 0.2);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(33, 150, 243, 0.3);
             display: flex;
             flex-direction: column;
+            width: auto;
+            max-width: 100%;
+            height: auto;
+            min-height: 80vh;
+            overflow: hidden;
+
         }
 
         .chat-header {
@@ -179,14 +192,16 @@
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            overflow-x: hidden;  /* Add this */
-            padding: 20px;
+            overflow-x: hidden;
+            padding: 1rem;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 12px;
             margin-bottom: 20px;
+            max-width: 100%;
             display: flex;
             flex-direction: column;
             gap: 15px;
+            box-sizing: border-box;
         }
 
 
@@ -217,16 +232,59 @@
         }
 
         .assistant-message {
-            background: rgba(255, 255, 255, 0.9);
-            color: #2d3748;
+            background: linear-gradient(135deg, #ffecb3 0%, #ffe082 100%);
+            color: #3e2723;
             align-self: flex-start;
-            border: 1px solid #e2e8f0;
-            max-width: 70%;  /* Limit the width to 70% of the container */
-            overflow: hidden;  /* Prevent content from overflowing */
-            word-wrap: break-word;  /* Ensure long words wrap to the next line */
-            padding: 15px 20px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
             border-radius: 16px;
+            padding: 10px 15px;
             animation: fadeIn 0.3s ease;
+            max-width: 90%;          
+            width: 80%;
+            overflow-y: auto;
+            overflow-x: auto;
+            
+        }
+
+        .assistant-message.has-table {
+            display: block;
+            overflow-x: auto;          /* horizontal scroll if needed */
+            overflow-y: auto;          /* vertical scroll if content too tall */
+            max-height: 500px;         /* decent fixed vertical height */
+            width: 100%;               /* take entire width of chat area */
+            border: 1px solid #e2e8f0;
+            box-sizing: border-box;
+        }
+
+        /* Table styling inside assistant message */
+        .assistant-message.has-table table {
+            border-collapse: collapse;
+            width: max-content;        /* don’t force table to shrink */
+            min-width: 100%;           /* ensure fills available width first */
+        }
+
+        .assistant-message.has-table th,
+        .assistant-message.has-table td {
+            white-space: nowrap;
+            padding: 12px;
+        }
+
+        .assistant-message.has-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .assistant-message.has-table td {
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .assistant-message.has-table tr:hover {
+            background: #f7fafc;
         }
 
         .chat-input-container {
@@ -237,7 +295,7 @@
 
         .chat-input {
             flex: 1;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(241, 240, 212, 0.9);
             border: 1px solid #e2e8f0;
             border-radius: 14px;
             padding: 14px 18px;
@@ -253,7 +311,7 @@
         }
 
         .send-btn {
-            background: rgba(37, 131, 34, 0.85);
+            background: rgba(71, 138, 8, 0.85);
             color: white;
             border: none;
             border-radius: 12px;
@@ -373,45 +431,7 @@
             transform: scale(1.05);
         }
 
-        .assistant-message.has-table {
-            overflow-x: auto;  /* Add horizontal scroll for wide content */
-            overflow-y: hidden;  /* Prevent vertical scroll */
-            max-width: 100%;  /* Allow the message to expand horizontally */
-            padding: 15px;  /* Adjust padding for better spacing */
-        }
-
-        .assistant-message.has-table table {
-            width: max-content;  /* Table takes only the space it needs */
-            border-collapse: collapse;
-        }
-
-        .assistant-message.has-table th,
-    .assistant-message.has-table td {
-        white-space: nowrap;  /* Prevent text wrapping in table cells */
-        padding: 12px;
-    }
-
-    .assistant-message.has-table th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        text-align: left;
-        font-weight: 600;
-        font-size: 14px;
-    }
-
-    .assistant-message.has-table td {
-        border-bottom: 1px solid #e2e8f0;
-        font-size: 14px;
-        color: #2d3748;
-    }
-
-    .assistant-message.has-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .assistant-message.has-table tr:hover {
-        background: #f7fafc;
-    }
+        
     </style>
 </head>
 <body>
@@ -497,6 +517,8 @@
         const testFormatInput = document.getElementById('test-format-input');
         const modelCardName = document.getElementById('model-card-name');
         const testFormatName = document.getElementById('test-format-name');
+        let currentTableData = [];
+        let currentColumnOrder = [];
 
         modelCardInput.addEventListener('change', function(e) {
             if (e.target.files.length > 0) {
@@ -655,20 +677,37 @@
             });
         }
 
-        function downloadTableAsCSV(tableData) {
-            const headers = Object.keys(tableData[0]).join(',');
-            const rows = tableData.map(row => 
-                Object.values(row).map(val => `"${val}"`).join(',')
-            ).join('\n');
-            const csv = headers + '\n' + rows;
+        async function downloadTableAsCSV(tableData) {
+            const selectedModel = modelSelect.value;
             
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `test_cases_${Date.now()}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
+            try {
+                const response = await fetch("{{ url_for('download_test_cases') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        test_cases: tableData,
+                        model_name: selectedModel,
+                        column_order: currentColumnOrder
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${selectedModel}_test_cases.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Failed to download test cases');
+            }
         }
 
         async function sendMessage() {
@@ -707,6 +746,8 @@
                 if (data.response) {
                     // Check if response includes table data
                     if (data.table_data && data.table_data.length > 0) {
+                        currentTableData = data.table_data;  // ADD THIS LINE
+                        currentColumnOrder = data.columns || Object.keys(data.table_data[0] || {});
                         addMessage(data.response, false, data.table_data);
                     } else {
                         addMessage(data.response, false);
@@ -723,6 +764,17 @@
                 sendBtn.textContent = 'Send';
             }
         }
+         const observer = new MutationObserver(() => {
+                document.querySelectorAll('.assistant-message').forEach(msg => {
+                    if (msg.querySelector('table') && !msg.classList.contains('has-table')) {
+                        msg.classList.add('has-table');
+                    }
+                });
+            });
+
+            observer.observe(document.getElementById('chat-messages'), { childList: true, subtree: true });
+
+        
     </script>
 </body>
 </html>
