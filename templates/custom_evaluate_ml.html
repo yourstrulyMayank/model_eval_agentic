@@ -1391,5 +1391,19 @@
         });
         {% endif %}
     </script>
+    {% if auto_start %}
+    <script>
+        // Auto-start evaluation when page loads from agentic request
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Auto-starting evaluation from agentic request...');
+            setTimeout(() => {
+                const startBtn = document.querySelector('button[onclick*="startEvaluation"]');
+                if (startBtn) {
+                    startBtn.click();
+                }
+            }, 1000);
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

@@ -21,7 +21,7 @@ from openai import OpenAI
 from werkzeug.utils import secure_filename
 import PyPDF2
 # from weasyprint import HTML, CSS
-
+from urllib.parse import unquote
 from llm_tool_bigbench_utils import ( run_evaluation_in_background,
                                         extract_score_from_results)
 
@@ -973,7 +973,109 @@ def generate_test_cases():
             'error': str(e)
         }), 500
     
+@app.route('/agentic-evaluation')
+def agentic_evaluation():
+    return render_template('agentic_evaluation.html')
 
+@app.route('/process-agentic-request', methods=['POST'])
+def process_agentic_request():
+    """Process natural language requests using LLM to route to appropriate evaluation"""
+    try:
+        data = request.json
+        user_message = data.get('message', '').lower()
+        
+        # Improved classification prompt with better instructions
+        classification_prompt = f"""Analyze this user request and extract information.
+
+        Available models and their types:
+        - "Compliance Assist" - LLM model
+        - "Wealth Assist" - LLM model  
+        - "Capital Risk" - ML model
+
+        User request: "{user_message}"
+
+        Determine:
+        1. Is this "standard" or "custom" evaluation?
+        2. Which model name from the list above?
+        3. Is it "ml" or "llm" type?
+
+        Respond ONLY with valid JSON, no other text:
+        {{"evaluation_type": "standard", "model_name": "Capital Risk", "model_type": "ml"}}"""
+        
+        # Call Ollama
+        llm_response = call_ollama_llm(classification_prompt, model="llama3.2")
+        
+        # Parse LLM response
+        import re
+        json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+        if json_match:
+            intent = json.loads(json_match.group())
+            
+            eval_type = intent.get('evaluation_type')
+            model_name = intent.get('model_name')
+            model_type = intent.get('model_type')
+            
+            # Validate model name
+            valid_models = {
+                'ml': ['Capital Risk'],
+                'llm': ['Compliance Assist', 'Wealth Assist']
+            }
+            
+            if model_name not in valid_models.get(model_type, []):
+                return jsonify({
+                    'error': f'Invalid model "{model_name}" for type {model_type}',
+                    'log': 'Model name validation failed',
+                    'log_type': 'error'
+                })
+            
+            # Store in session for ML custom to auto-start
+            session['agentic_request'] = {
+                'model_name': model_name,
+                'eval_type': eval_type,
+                'model_type': model_type
+            }
+            
+            # Generate redirect URL
+            if model_type == 'ml':
+                if eval_type == 'standard':
+                    # For ML standard, we need to trigger POST request
+                    return jsonify({
+                        'response': f'Starting {eval_type} evaluation for {model_name}...',
+                        'log': f'Agent routing to {eval_type} evaluation workflow',
+                        'log_type': 'success',
+                        'redirect_url': None,
+                        'trigger_ml_standard': True,
+                        'model_name': model_name
+                    })
+                else:
+                    redirect_url = url_for('ml_s_c.custom_ml', 
+                                          model_name='capital_risk', 
+                                          subcategory='supervised')
+            else:  # llm
+                if eval_type == 'standard':
+                    redirect_url = url_for('evaluate_llm', model_name=model_name)
+                else:
+                    redirect_url = url_for('custom_llm', model_name=model_name)
+            
+            return jsonify({
+                'response': f'Starting {eval_type} evaluation for {model_name}...',
+                'log': f'Agent routing to {eval_type} evaluation workflow for {model_name}',
+                'log_type': 'success',
+                'redirect_url': redirect_url
+            })
+        
+        return jsonify({
+            'error': 'Could not understand the request. Please specify evaluation type and model name.',
+            'log': 'Failed to parse user intent',
+            'log_type': 'error'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'log': f'Error in agentic processing: {str(e)}',
+            'log_type': 'error'
+        }), 500
 
 
 if __name__ == '__main__':

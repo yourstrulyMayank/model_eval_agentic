@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template,  redirect, url_for, flash, Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response, send_from_directory
+from flask import Blueprint, render_template,  redirect, url_for, flash, Flask, render_template, request, redirect, url_for, jsonify, flash, send_file, make_response, send_from_directory, session
 import pandas as pd
 import os
 import traceback
@@ -25,6 +25,11 @@ evaluation_progress = {}
 @ml_s_c_bp.route('/custom_ml/<model_name>/<subcategory>')
 def custom_ml(model_name, subcategory):
     """Custom ML evaluation page with results display"""
+    agentic_request = session.pop('agentic_request', None)
+    auto_start = False
+    
+    if agentic_request and agentic_request.get('eval_type') == 'custom':
+        auto_start = True
     try:
         # Get uploaded files
         upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
