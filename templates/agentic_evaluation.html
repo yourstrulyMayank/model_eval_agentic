@@ -257,111 +257,275 @@
     </div>
 
     <script>
+    let evaluationWindow = null;
+    let checkInterval = null;
+    let currentModelType = null;
+    let currentModelName = null;
 
-        function addLog(message, type = 'processing') {
-            const logsContent = document.getElementById('logsContent');
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry log-${type}`;
-            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logsContent.appendChild(logEntry);
-            logsContent.scrollTop = logsContent.scrollHeight;
+    function addLog(message, type = 'processing') {
+        const logsContent = document.getElementById('logsContent');
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry log-${type}`;
+        logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logsContent.appendChild(logEntry);
+        logsContent.scrollTop = logsContent.scrollHeight;
+    }
+
+    function addMessage(text, sender = 'agent') {
+        const messagesDiv = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        addMessage(message, 'user');
+        input.value = '';
+        
+        sendBtn.disabled = true;
+        
+        if (awaitingSummaryConsent && /^y(es)?$/i.test(message)) {
+            awaitingSummaryConsent = false;
+            await requestSummary();
+            return;
         }
-
-        function addMessage(text, sender = 'agent') {
-            const messagesDiv = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        // Check if asking for summary
+        if (message.toLowerCase().includes('summary') || message.toLowerCase().includes('summarize')) {
+            if (currentModelType && currentModelName) {
+                await requestSummary();
+                sendBtn.disabled = false;
+                return;
+            } else {
+                addMessage('No evaluation results available to summarize. Please run an evaluation first.', 'agent');
+                sendBtn.disabled = false;
+                return;
+            }
         }
-
-        async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const sendBtn = document.getElementById('sendBtn');
-            const message = input.value.trim();
+        
+        addLog('Analyzing user request...', 'fetching');
+        
+        try {
+            const response = await fetch('/process-agentic-request', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: message})
+            });
             
-            if (!message) return;
+            const data = await response.json();
             
-            addMessage(message, 'user');
-            input.value = '';
-            sendBtn.disabled = true;
-            
-            addLog('Analyzing user request...', 'fetching');
-            
-            try {
-                const response = await fetch('/process-agentic-request', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({message: message})
-                });
+            if (data.error) {
+                addLog(data.error, 'error');
+                addMessage(`Error: ${data.error}`, 'agent');
+            } else {
+                addLog(data.log, data.log_type || 'processing');
+                addMessage(data.response, 'agent');
                 
-                const data = await response.json();
-                
-                if (data.error) {
-                    addLog(data.error, 'error');
-                    addMessage(`Error: ${data.error}`, 'agent');
-                } else {
-                    addLog(data.log, data.log_type || 'processing');
-                    addMessage(data.response, 'agent');
-                    
-                    // Handle ML Standard (requires POST in new tab)
-                    if (data.trigger_ml_standard) {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
-                        form.target = '_blank';
-                        
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'benchmark';
-                        input.value = data.model_name;
-                        
-                        form.appendChild(input);
-                        document.body.appendChild(form);
-                        
-                        setTimeout(() => {
-                            form.submit();
-                            document.body.removeChild(form);
-                            
-                            addLog('Evaluation opened in new tab', 'success');
-                            addMessage('✅ Evaluation has been opened in a new tab. Check the tab for progress and results.', 'agent');
-                        }, 500);
-                    }
-                    // Handle other redirects in new tab
-                    else if (data.redirect_url) {
-                        setTimeout(() => {
-                            window.open(data.redirect_url, '_blank');
-                            
-                            addLog('Evaluation opened in new tab', 'success');
-                            addMessage('✅ Evaluation has been opened in a new tab. Check the tab for progress and results.', 'agent');
-                        }, 500);
-                    }
+                // Handle test case generation for ML custom
+                if (data.trigger_testcase_generation) {
+                    await handleTestCaseGeneration(data.model_name);
                 }
-            } catch (error) {
-                addLog(`Error: ${error.message}`, 'error');
-                addMessage('Sorry, something went wrong. Please try again.', 'agent');
+                // Handle ML Standard
+                else if (data.trigger_ml_standard) {
+                    handleMLStandard(data.model_name);
+                }
+                // Handle other redirects
+                else if (data.redirect_url) {
+                    handleRedirect(data.redirect_url, data.model_name);
+                }
+            }
+        } catch (error) {
+            addLog(`Error: ${error.message}`, 'error');
+            addMessage('Sorry, something went wrong. Please try again.', 'agent');
+        }
+        
+        sendBtn.disabled = false;
+    }
+    let awaitingSummaryConsent = false;
+    async function handleTestCaseGeneration(modelName) {
+        addLog('Will generate new test cases first...', 'processing');
+        addMessage('🔄 Generating test cases for ' + modelName + '...', 'agent');
+
+        try {
+            const response = await fetch(`/agentic_generate_testcases/${modelName}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                addLog('Test case generation failed: ' + data.error, 'error');
+                addMessage('❌ Failed to generate test cases. Please try manual upload.', 'agent');
+                return;
+            }
+
+            addLog(`Generated ${data.test_cases_count} test cases`, 'success');
+            addMessage(`✅ Test cases generated for ${modelName}. You can now proceed with custom evaluation. The evaluation page will open in a new tab.`, 'agent');
+
+            // Open the custom evaluation page in a new tab
+            window.open(`/custom_ml/${modelName}/supervised`, '_blank');
+
+            // After a delay, ask if the user wants a summary
+            setTimeout(() => {
+                addMessage('🕒 Would you like me to summarize the results of your custom evaluation?', 'agent');
+                awaitingSummaryConsent = true;
+            }, 10000); // 3 minutes delay (in ms)
+        } catch (error) {
+            addLog('Error generating test cases: ' + error.message, 'error');
+            addMessage('❌ Error generating test cases. Please try again.', 'agent');
+        }
+    }
+
+    function handleMLStandard(modelName) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('ml_s_t_mlflow.evaluate_ml', model_name='capital_risk', subcategory='supervised') }}";
+        form.target = '_blank';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'benchmark';
+        input.value = modelName;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        
+        setTimeout(() => {
+            evaluationWindow = form.submit();
+            document.body.removeChild(form);
+            
+            currentModelType = 'ml_standard';
+            currentModelName = 'capital_risk';
+            
+            addLog('Evaluation opened in new tab', 'success');
+            addMessage('✅ Evaluation started in a new tab.', 'agent');
+            
+            startMonitoring('ml_standard', 'capital_risk');
+        }, 500);
+    }
+
+    function handleRedirect(url, modelName) {
+        setTimeout(() => {
+            evaluationWindow = window.open(url, '_blank');
+            
+            // Determine model type from URL
+            if (url.includes('custom_llm')) {
+                currentModelType = 'llm_custom';
+                currentModelName = modelName;
+            } else if (url.includes('evaluate_llm')) {
+                currentModelType = 'llm_standard';
+                currentModelName = modelName;
             }
             
-            sendBtn.disabled = false;
-        }
-
-        
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
+            addLog('Evaluation opened in new tab', 'success');
+            addMessage('✅ Evaluation opened in a new tab.', 'agent');
+            
+            if (currentModelType) {
+                startMonitoring(currentModelType, currentModelName);
             }
-        }
+        }, 500);
+    }
 
-        
-        function getModelNameFromUrl(url) {
-            // Extract model name from URL
-            const match = url.match(/\/([^\/]+)(?:\?|$)/);
-            return match ? decodeURIComponent(match[1]) : '';
+    function startMonitoring(modelType, modelName) {
+    addMessage('⏳ Monitoring evaluation progress. I\'ll notify you when it completes...', 'agent');
+    if (checkInterval) {
+        clearInterval(checkInterval);
+    }
+    let statusEndpoint = '';
+    if (modelType === 'ml_custom') {
+        statusEndpoint = `/check_custom_ml_status/${modelName}`;
+    } else if (modelType === 'ml_standard') {
+        statusEndpoint = `/api/ml_progress/${modelName}`;
+    } else if (modelType === 'llm_custom') {
+        statusEndpoint = `/check_custom_status/${modelName}`;
+    } else if (modelType === 'llm_standard') {
+        statusEndpoint = `/check_status/${modelName}`;
+    }
+    let checkCount = 0;
+    const maxChecks = 120;
+    checkInterval = setInterval(async () => {
+        checkCount++;
+        if (checkCount > maxChecks) {
+            clearInterval(checkInterval);
+            addLog('Evaluation monitoring timeout', 'error');
+            addMessage('⚠️ Evaluation is taking longer than expected. Please check the evaluation tab.', 'agent');
+            return;
         }
+        try {
+            const response = await fetch(statusEndpoint);
+            const data = await response.json();
+            // For ML standard, use status field
+            if (modelType === 'ml_standard') {
+                if (data.status === 'complete') {
+                    clearInterval(checkInterval);
+                    addLog('Evaluation completed successfully', 'success');
+                    addMessage('✅ Evaluation completed! Would you like me to summarize the results?', 'agent');
+                    awaitingSummaryConsent = true;
+                } else if (data.status === 'error') {
+                    clearInterval(checkInterval);
+                    addLog('Evaluation failed', 'error');
+                    addMessage('❌ Evaluation encountered an error. Please check the evaluation tab.', 'agent');
+                }
+            } else {
+                if (data.status === 'complete') {
+                    clearInterval(checkInterval);
+                    addLog('Evaluation completed successfully', 'success');
+                    addMessage('✅ Evaluation completed! Would you like me to summarize the results?', 'agent');
+                } else if (data.status === 'error') {
+                    clearInterval(checkInterval);
+                    addLog('Evaluation failed', 'error');
+                    addMessage('❌ Evaluation encountered an error. Please check the evaluation tab.', 'agent');
+                }
+            }
+        } catch (error) {
+            console.error('Status check error:', error);
+        }
+    }, 5000);
+}
 
+    async function requestSummary() {
+        if (!currentModelType || !currentModelName) {
+            addMessage('No evaluation results available to summarize.', 'agent');
+            return;
+        }
         
-    </script>
+        addLog('Generating results summary...', 'processing');
+        addMessage('🔄 Analyzing evaluation results...', 'agent');
+        
+        try {
+            const response = await fetch(`/agentic_summarize_results/${currentModelType}/${currentModelName}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                addLog('Summary generation failed', 'error');
+                addMessage('❌ Could not generate summary. ' + data.error, 'agent');
+            } else {
+                addLog('Summary generated successfully', 'success');
+                addMessage(`<strong>📊 Evaluation Summary:</strong><br><br>${data.summary}`, 'agent');
+            }
+        } catch (error) {
+            addLog('Error generating summary: ' + error.message, 'error');
+            addMessage('❌ Error generating summary. Please try again.', 'agent');
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+</script>
 </body>
 </html>

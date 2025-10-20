@@ -1392,6 +1392,25 @@
         {% endif %}
     </script>
     
-    
+   {% if auto_trigger %}
+<script>
+    // Auto-trigger evaluation when page loads from agentic flow
+    window.addEventListener('load', function() {
+        console.log('Auto-triggering ML custom evaluation');
+        
+        // Wait a bit for page to fully load
+        setTimeout(function() {
+            // Find and click the start evaluation button
+            const startBtn = document.querySelector('button[onclick*="startCustomEvaluation"]');
+            if (startBtn) {
+                startBtn.click();
+            } else {
+                // Fallback: directly call the evaluation
+                startCustomEvaluation();
+            }
+        }, 1000);
+    });
+</script>
+{% endif %} 
 </body>
 </html>

@@ -25,19 +25,15 @@ evaluation_progress = {}
 @ml_s_c_bp.route('/custom_ml/<model_name>/<subcategory>')
 def custom_ml(model_name, subcategory):
     """Custom ML evaluation page with results display"""
-    # agentic_request = session.pop('agentic_request', None)
-    # auto_start = False
+    agentic_request = session.pop('agentic_request', None)
+    auto_trigger = agentic_request and agentic_request.get('auto_trigger', False)
     
-    # if agentic_request and agentic_request.get('eval_type') == 'custom':
-    #     auto_start = True
     try:
-        # Get uploaded files
         upload_dir = os.path.join(UPLOAD_FOLDER, model_name)
         uploaded_files = []
         if os.path.exists(upload_dir):
             uploaded_files = os.listdir(upload_dir)
         
-        # Get evaluation results - THIS IS THE KEY FIX
         evaluation_results = None
         results_key = f"{model_name}_ml"
         if results_key in custom_evaluation_results:
@@ -48,7 +44,8 @@ def custom_ml(model_name, subcategory):
                              model_name=model_name,
                              subcategory=subcategory,
                              uploaded_files=uploaded_files,
-                             evaluation_results=evaluation_results)  # Pass results here
+                             evaluation_results=evaluation_results,
+                             auto_trigger=auto_trigger)
     
     except Exception as e:
         print(f"Error in custom_ml route: {str(e)}")

@@ -72,18 +72,24 @@ def evaluate_ml(model_name, subcategory):
         flash(f"Error starting evaluation: {str(e)}")
         return redirect(url_for('index'))
     
-# API endpoints for progress tracking and results
+# # API endpoints for progress tracking and results
+# @ml_s_t_mlflow_bp.route('/api/ml_progress/<model_name>')
+# def get_ml_evaluation_progress(model_name):
+#     """Get current progress of ML model evaluation."""
+#     progress = get_ml_progress(model_name)
+#     return jsonify(progress)
+
 @ml_s_t_mlflow_bp.route('/api/ml_progress/<model_name>')
 def get_ml_evaluation_progress(model_name):
     """Get current progress of ML model evaluation."""
     progress = get_ml_progress(model_name)
-    return jsonify(progress)
-
-@ml_s_t_mlflow_bp.route('/api/ml_progress/<model_name>')
-def get_progress(model_name):
-    """API endpoint to get evaluation progress"""
-    progress = get_ml_progress(model_name)
-    return jsonify(progress)
+    # Add status field for agentic monitoring
+    status = 'processing'
+    if progress.get('progress_percent', 0) >= 100:
+        status = 'complete'
+    elif 'Error' in progress.get('current_task', ''):
+        status = 'error'
+    return jsonify({**progress, 'status': status})
 
 @ml_s_t_mlflow_bp.route('/api/ml_results/<model_name>')
 def get_ml_evaluation_results(model_name):
