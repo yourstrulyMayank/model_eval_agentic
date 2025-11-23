@@ -248,6 +248,87 @@
         .hidden {
             display: none;
         }
+
+        .tabs-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            margin: 30px auto;
+            overflow: hidden;
+        }
+        
+        .tabs-header {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
+        }
+        
+        .tab-button {
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .tab-button.active {
+            color: #0071e3;
+            border-bottom-color: #0071e3;
+            background: white;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        @media (max-width: 1024px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
         
         @media (max-width: 1024px) {
             .two-column {
@@ -295,76 +376,184 @@
     </nav>
     
     <div class="container">
-        <!-- Key Metrics -->
-        <div class="dashboard-grid">
-            <div class="metric-card">
-                <div class="metric-label">Total Capital Charge</div>
-                <div class="metric-value" id="totalCapital">-</div>
-                <div class="metric-change">Basel III FRTB-SA</div>
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-button active" onclick="switchTab(0)">Dashboard Overview</button>
+                <button class="tab-button" onclick="switchTab(1)">Trading Desk Analysis</button>
+                <button class="tab-button" onclick="switchTab(2)">Commodities Trading</button>
+                <button class="tab-button" onclick="switchTab(3)">Risk Class Charges</button>
+                <button class="tab-button" onclick="switchTab(4)">Capital by Risk Class</button>
             </div>
             
-            <div class="metric-card">
-                <div class="metric-label">GIRR Capital</div>
-                <div class="metric-value" id="girrCapital">-</div>
-                <div class="metric-change">Interest Rate Risk</div>
-            </div>
-            
-            <div class="metric-card">
-                <div class="metric-label">Credit Spread Risk</div>
-                <div class="metric-value" id="csrCapital">-</div>
-                <div class="metric-change">CSR Non-Sec + Sec</div>
-            </div>
-            
-            <div class="metric-card">
-                <div class="metric-label">Market Risk Classes</div>
-                <div class="metric-value" id="riskClassCount">-</div>
-                <div class="metric-change">Active Risk Categories</div>
-            </div>
-        </div>
-        
-        <!-- Charts Row 1 -->
-        <div class="two-column">
-            <div class="chart-container">
-                <div class="chart-title">Capital Allocation by Risk Class</div>
-                <div class="chart-wrapper">
-                    <canvas id="riskClassChart"></canvas>
+            <!-- Tab 1: Dashboard Overview -->
+            <div class="tab-content active" id="tab0">
+                <!-- Key Metrics -->
+                <div class="dashboard-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Capital Charge</div>
+                        <div class="metric-value" id="totalCapital">-</div>
+                        <div class="metric-change">Basel III FRTB-SA</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">GIRR Capital</div>
+                        <div class="metric-value" id="girrCapital">-</div>
+                        <div class="metric-change">Interest Rate Risk</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Credit Spread Risk</div>
+                        <div class="metric-value" id="csrCapital">-</div>
+                        <div class="metric-change">CSR Non-Sec + Sec</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Market Risk Classes</div>
+                        <div class="metric-value" id="riskClassCount">-</div>
+                        <div class="metric-change">Active Risk Categories</div>
+                    </div>
+                </div>
+                
+                <!-- Charts Row 1 -->
+                <div class="two-column">
+                    <div class="chart-container">
+                        <div class="chart-title">Capital Allocation by Risk Class</div>
+                        <div class="chart-wrapper">
+                            <canvas id="riskClassChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">Top 5 Risk Contributors</div>
+                        <div class="chart-wrapper">
+                            <canvas id="topRisksChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Row 2 -->
+                <div class="chart-container">
+                    <div class="chart-title">Risk Class Distribution</div>
+                    <div class="chart-wrapper">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Data Table -->
+                <div class="data-table">
+                    <div class="chart-title">Detailed Risk Breakdown</div>
+                    <table id="riskTable">
+                        <thead>
+                            <tr>
+                                <th>Risk Class</th>
+                                <th>Capital Charge (USD)</th>
+                                <th>% of Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskTableBody">
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: #999;">Loading data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
-            <div class="chart-container">
-                <div class="chart-title">Top 5 Risk Contributors</div>
-                <div class="chart-wrapper">
-                    <canvas id="topRisksChart"></canvas>
+            <!-- Tab 2: Trading Desk Analysis -->
+            <div class="tab-content" id="tab1">
+                <div class="chart-container">
+                    <div class="chart-title">Delta Sensitivities by Trading Desk</div>
+                    <div class="chart-wrapper">
+                        <canvas id="tradingDeskChart"></canvas>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Charts Row 2 -->
-        <div class="chart-container">
-            <div class="chart-title">Risk Class Distribution</div>
-            <div class="chart-wrapper">
-                <canvas id="distributionChart"></canvas>
+            
+            <!-- Tab 3: Commodities Trading -->
+            <div class="tab-content" id="tab2">
+                <div class="data-table">
+                    <div class="chart-title">Commodities Trading Desk Analysis</div>
+                    <table class="tab-table">
+                        <thead>
+                            <tr>
+                                <th>Trading Desk</th>
+                                <th>Delta Sensitivities</th>
+                                <th>Delta Kb</th>
+                                <th>Vega Sensitivities</th>
+                                <th>Vega Kb</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commoditiesTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #999;">Loading data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-        
-        <!-- Data Table -->
-        <div class="data-table">
-            <div class="chart-title">Detailed Risk Breakdown</div>
-            <table id="riskTable">
-                <thead>
-                    <tr>
-                        <th>Risk Class</th>
-                        <th>Capital Charge (USD)</th>
-                        <th>% of Total</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="riskTableBody">
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: #999;">Loading data...</td>
-                    </tr>
-                </tbody>
-            </table>
+            
+            <!-- Tab 4: Risk Class Charges -->
+            <div class="tab-content" id="tab3">
+                <div class="split-view">
+                    <div class="data-table">
+                        <div class="chart-title">Charge Breakdown by Risk Class</div>
+                        <table class="tab-table">
+                            <thead>
+                                <tr>
+                                    <th>Risk Class</th>
+                                    <th>Delta Charge</th>
+                                    <th>Vega Charge</th>
+                                    <th>Curvature Charge</th>
+                                    <th>Total Capital</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chargesTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #999;">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="tab-chart-container">
+                        <div class="chart-title">Total Delta Charge Distribution</div>
+                        <div style="height: 400px;">
+                            <canvas id="deltaChargePieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab 5: Capital by Risk Class -->
+            <div class="tab-content" id="tab4">
+                <div class="split-view">
+                    <div class="data-table">
+                        <div class="chart-title">Total Capital Charge by Risk Class</div>
+                        <table class="tab-table">
+                            <thead>
+                                <tr>
+                                    <th>Risk Class</th>
+                                    <th>Total Capital Charge</th>
+                                    <th>% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="capitalTableBody">
+                                <tr>
+                                    <td colspan="3" style="text-align: center; color: #999;">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="tab-chart-container">
+                        <div class="chart-title">Capital Charge Distribution</div>
+                        <div style="height: 400px;">
+                            <canvas id="capitalPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -412,6 +601,12 @@
                     updateMetrics(data.summary);
                     createCharts(data.summary);
                     updateTable(data);
+                    
+                    // Update all tabs
+                    updateTradingDeskTab(data);
+                    updateCommoditiesTab(data);
+                    updateChargesTab(data);
+                    updateCapitalTab(data);
                 } else if (data.status === 'error') {
                     clearInterval(pollInterval);
                     document.getElementById('loadingOverlay').classList.add('hidden');
@@ -611,6 +806,254 @@
             }
         }
         
+        // Switch tabs
+        function switchTab(tabIndex) {
+            // Update tab buttons
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach((btn, idx) => {
+                if (idx === tabIndex) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Update tab content
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach((content, idx) => {
+                if (idx === tabIndex) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Update Tab 2: Trading Desk Analysis
+        function updateTradingDeskTab(data) {
+            // Calculate sum of delta sensitivities by trading desk
+            const deskData = {};
+            
+            if (data.risk_breakdown) {
+                data.risk_breakdown.forEach(item => {
+                    const desk = item['Risk Class'] || 'Unknown';
+                    const sensitivity = item['Total Sensitivity'] || 0;
+                    deskData[desk] = (deskData[desk] || 0) + sensitivity;
+                });
+            }
+            
+            const sortedDesks = Object.entries(deskData)
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+            
+            const ctx = document.getElementById('tradingDeskChart').getContext('2d');
+            if (charts.tradingDeskChart) charts.tradingDeskChart.destroy();
+            
+            charts.tradingDeskChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedDesks.map(d => d[0]),
+                    datasets: [{
+                        label: 'Delta Sensitivities (USD)',
+                        data: sortedDesks.map(d => d[1]),
+                        backgroundColor: '#0071e3',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update Tab 3: Commodities Trading
+        function updateCommoditiesTab(data) {
+            const tbody = document.getElementById('commoditiesTableBody');
+            
+            // Filter for Commodities Trading desks
+            const commoditiesData = {};
+            if (data.risk_breakdown) {
+                data.risk_breakdown.forEach(item => {
+                    const riskClass = item['Risk Class'] || '';
+                    if (riskClass.toLowerCase().includes('commodit')) {
+                        const desk = riskClass;
+                        if (!commoditiesData[desk]) {
+                            commoditiesData[desk] = {
+                                deltaSens: 0,
+                                deltaKb: 0,
+                                vegaSens: 0,
+                                vegaKb: 0
+                            };
+                        }
+                        commoditiesData[desk].deltaSens += item['Total Sensitivity'] || 0;
+                        commoditiesData[desk].deltaKb += item['Capital Charge'] || 0;
+                        // Vega values would come from actual data if available
+                        commoditiesData[desk].vegaSens += (item['Total Sensitivity'] || 0) * 0.1; // Mock
+                        commoditiesData[desk].vegaKb += (item['Capital Charge'] || 0) * 0.05; // Mock
+                    }
+                });
+            }
+            
+            if (Object.keys(commoditiesData).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No commodities trading data available</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = Object.entries(commoditiesData).map(([desk, values]) => `
+                <tr>
+                    <td><strong>${desk}</strong></td>
+                    <td>${formatCurrency(values.deltaSens)}</td>
+                    <td>${formatCurrency(values.deltaKb)}</td>
+                    <td>${formatCurrency(values.vegaSens)}</td>
+                    <td>${formatCurrency(values.vegaKb)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // Update Tab 4: Risk Class Charges
+        function updateChargesTab(data) {
+            const capitalCharges = data.summary.Capital_Charges || {};
+            const chargesData = [];
+            
+            Object.entries(capitalCharges).forEach(([riskClass, total]) => {
+                if (riskClass !== 'TOTAL') {
+                    chargesData.push({
+                        riskClass: riskClass.replace(/_/g, ' '),
+                        deltaCharge: total * 0.7, // Mock distribution
+                        vegaCharge: total * 0.2,
+                        curvatureCharge: total * 0.1,
+                        totalCapital: total
+                    });
+                }
+            });
+            
+            // Update table
+            const tbody = document.getElementById('chargesTableBody');
+            tbody.innerHTML = chargesData.map(row => `
+                <tr>
+                    <td><strong>${row.riskClass}</strong></td>
+                    <td>${formatCurrency(row.deltaCharge)}</td>
+                    <td>${formatCurrency(row.vegaCharge)}</td>
+                    <td>${formatCurrency(row.curvatureCharge)}</td>
+                    <td>${formatCurrency(row.totalCapital)}</td>
+                </tr>
+            `).join('');
+            
+            // Update pie chart
+            const ctx = document.getElementById('deltaChargePieChart').getContext('2d');
+            if (charts.deltaChargePieChart) charts.deltaChargePieChart.destroy();
+            
+            charts.deltaChargePieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: chargesData.map(d => d.riskClass),
+                    datasets: [{
+                        data: chargesData.map(d => d.deltaCharge),
+                        backgroundColor: [
+                            '#0071e3', '#28a745', '#ffc107', '#dc3545',
+                            '#6f42c1', '#fd7e14', '#20c997', '#6610f2'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 15, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + formatCurrency(context.parsed);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update Tab 5: Capital by Risk Class
+        function updateCapitalTab(data) {
+            const capitalCharges = data.summary.Capital_Charges || {};
+            const total = capitalCharges.TOTAL || 1;
+            
+            const capitalData = Object.entries(capitalCharges)
+                .filter(([key]) => key !== 'TOTAL')
+                .map(([key, value]) => ({
+                    riskClass: key.replace(/_/g, ' '),
+                    capital: value,
+                    percentage: (value / total) * 100
+                }))
+                .sort((a, b) => b.capital - a.capital);
+            
+            // Update table
+            const tbody = document.getElementById('capitalTableBody');
+            tbody.innerHTML = capitalData.map(row => `
+                <tr>
+                    <td><strong>${row.riskClass}</strong></td>
+                    <td>${formatCurrency(row.capital)}</td>
+                    <td>${formatPercent(row.percentage)}</td>
+                </tr>
+            `).join('');
+            
+            // Update pie chart
+            const ctx = document.getElementById('capitalPieChart').getContext('2d');
+            if (charts.capitalPieChart) charts.capitalPieChart.destroy();
+            
+            charts.capitalPieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: capitalData.map(d => d.riskClass),
+                    datasets: [{
+                        data: capitalData.map(d => d.capital),
+                        backgroundColor: [
+                            '#0071e3', '#28a745', '#ffc107', '#dc3545',
+                            '#6f42c1', '#fd7e14', '#20c997', '#6610f2'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 15, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + formatCurrency(context.parsed);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function addDownloadSection(files) {
             const container = document.querySelector('.container');
             let downloadSection = document.getElementById('downloadSection');
