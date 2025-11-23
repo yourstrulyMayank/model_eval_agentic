@@ -141,6 +141,15 @@
         box-shadow: 0 4px 16px rgba(118,75,162,0.18);
     }
 
+    .eval-btn:disabled {
+        background: #ccc !important;
+        color: #888 !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        border: 1px solid #bbb !important;
+        transform: none !important;
+    }
+
     .dropdown-container {
         display: flex;
         gap: 20px;
@@ -378,8 +387,8 @@
     <p>Evaluate LLM models with standard benchmarks</p>
     <select class="agentic-dropdown" id="llm-standard-dropdown" onclick="event.stopPropagation()">
         <option value="" selected disabled>Select a Model</option>
-        <option value="Compliance Assist">Compliance Assist</option>
-        <option value="Wealth Assist">Wealth Assist</option>
+        <option value="Compliance Model">Compliance Model</option>
+        <option value="Wealth Advisory Model">Wealth Advisory Model</option>
     </select>
 </div>
 
@@ -389,8 +398,8 @@
     <p>Evaluate LLM models with custom testcases</p>
     <select class="agentic-dropdown" id="llm-custom-dropdown" onclick="event.stopPropagation()">
         <option value="" selected disabled>Select a Model</option>
-        <option value="Compliance Assist">Compliance Assist</option>
-        <option value="Wealth Assist">Wealth Assist</option>
+        <option value="Compliance Model">Compliance Model</option>
+        <option value="Wealth Advisory Model">Wealth Advisory Model</option>
     </select>
 </div>
 
@@ -414,6 +423,16 @@
     </select>
 </div>
 
+<div class="agentic-card" onclick="handleAgenticCardClick(event, 'risk-custom')">
+    <div class="card-icon">⚠</div>
+    <h3>Risk Models Custom Evaluation</h3>
+    <p>Evaluate Risk models with custom testcases</p>
+    <select class="agentic-dropdown" id="risk-custom-dropdown" onclick="event.stopPropagation()">
+        <option value="" selected disabled>Select a Model</option>
+        <option value="FRTB-SA">FRTB-SA</option>
+    </select>
+</div>
+
 <div class="agentic-card" onclick="navigateToAgentic()">
     <div class="card-icon">🤖</div>
     <h3>Agentic Evaluation</h3>
@@ -431,8 +450,8 @@
         <h3>LLM Models</h3>
         <select id="llm-dropdown" class="apple-dropdown" onchange="handleDropdownChange('llm')">
             <option value="" selected disabled>Select a Model</option>
-            <option value="Compliance Assist">Compliance Assist</option>
-            <option value="Wealth Assist">Wealth Assist</option>
+            <option value="Compliance Model">Compliance Model</option>
+            <option value="Wealth Advisory Model">Wealth Advisory Model</option>
         </select>
     </div>
     
@@ -441,6 +460,14 @@
         <select id="ml-dropdown" class="apple-dropdown" onchange="handleDropdownChange('ml')">
             <option value="" selected disabled>Select a Model</option>
             <option value="Capital Risk">Capital Risk</option>
+        </select>
+    </div>
+
+    <div class="dropdown-box">
+        <h3>Risk Models</h3>
+        <select id="risk-dropdown" class="apple-dropdown" onchange="handleDropdownChange('risk')">
+            <option value="" selected disabled>Select a Model</option>
+            <option value="FRTB-SA">FRTB-SA</option>
         </select>
     </div>
 </div>
@@ -452,7 +479,7 @@
                         <button class="eval-btn" type="submit" onclick="setBenchmarkAndRoute('standard')">Standard Evaluation</button>
                     </form>
                     <form id="custom-eval-form" method="get">
-                        <button class="cstm-eval-btn" type="submit" onclick="setBenchmarkAndRoute('custom')">Custom Evaluation</button>
+                        <button class="cstm-eval-btn" type="button" onclick="setBenchmarkAndRoute('custom')">Custom Evaluation</button>
                     </form>
                 </div>
             </div>
@@ -465,23 +492,40 @@
         let selectedModel = null;
 
         function handleDropdownChange(type) {
-            const llmDropdown = document.getElementById('llm-dropdown');
-            const mlDropdown = document.getElementById('ml-dropdown');
-            
-            if (type === 'llm') {
-                selectedType = 'llm';
-                selectedModel = llmDropdown.value;
-                mlDropdown.selectedIndex = 0; // Reset ML dropdown
-                llmDropdown.classList.add('selected');
-                mlDropdown.classList.remove('selected');
-            } else {
-                selectedType = 'ml';
-                selectedModel = mlDropdown.value;
-                llmDropdown.selectedIndex = 0; // Reset LLM dropdown
-                mlDropdown.classList.add('selected');
-                llmDropdown.classList.remove('selected');
-            }
-        }
+    const llmDropdown = document.getElementById('llm-dropdown');
+    const mlDropdown = document.getElementById('ml-dropdown');
+    const riskDropdown = document.getElementById('risk-dropdown');
+    const standardEvalBtn = document.querySelector('.eval-btn');
+
+    if (type === 'llm') {
+        selectedType = 'llm';
+        selectedModel = llmDropdown.value;
+        mlDropdown.selectedIndex = 0;
+        riskDropdown.selectedIndex = 0;
+        llmDropdown.classList.add('selected');
+        mlDropdown.classList.remove('selected');
+        riskDropdown.classList.remove('selected');
+        if (standardEvalBtn) standardEvalBtn.disabled = false;
+    } else if (type === 'ml') {
+        selectedType = 'ml';
+        selectedModel = mlDropdown.value;
+        llmDropdown.selectedIndex = 0;
+        riskDropdown.selectedIndex = 0;
+        mlDropdown.classList.add('selected');
+        llmDropdown.classList.remove('selected');
+        riskDropdown.classList.remove('selected');
+        if (standardEvalBtn) standardEvalBtn.disabled = false;
+    } else if (type === 'risk') {
+        selectedType = 'risk';
+        selectedModel = riskDropdown.value;
+        llmDropdown.selectedIndex = 0;
+        mlDropdown.selectedIndex = 0;
+        riskDropdown.classList.add('selected');
+        llmDropdown.classList.remove('selected');
+        mlDropdown.classList.remove('selected');
+        if (standardEvalBtn) standardEvalBtn.disabled = true; // Disable Standard Eval for Risk
+    }
+}
 
         function setBenchmarkAndRoute(type) {
             if (!selectedModel || !selectedType) {
@@ -501,6 +545,15 @@
                     form = document.getElementById('custom-eval-form');
                     route = "{{ url_for('ml_s_c.custom_ml', model_name='capital_risk', subcategory='supervised') }}";
                     form.action = route;
+                }
+            } else if (selectedType === 'risk') {
+                if (type === 'custom') {
+                    // Modular: redirect to the selected risk model's custom page
+                    window.location.href = `/risk/${selectedModel.toLowerCase().replace(/[^a-z0-9]/gi, '')}`;
+                    return false;
+                } else {
+                    // Standard evaluation is disabled for risk
+                    return false;
                 }
             } else {
                 if (type === 'standard') {
@@ -574,6 +627,11 @@
     function navigateToTestCaseGeneration() {
         window.location.href = "{{ url_for('test_case_generation') }}";
     }
+
+    
+    function navigateToRiskFRTBSA() {
+        window.location.href = "/risk_frtbsa";
+    }
     function handleAgenticCardClick(event, type) {
         const dropdownId = type + '-dropdown';
         const dropdown = document.getElementById(dropdownId);
@@ -591,7 +649,10 @@
             navigateToMLStandard();
         } else if (type === 'ml-custom') {
             navigateToMLCustom();
-        }
+        } else if (type === 'risk-custom') {
+        window.location.href = `/risk/${dropdown.value.toLowerCase().replace(/[^a-z0-9]/gi, '')}`;
+    return;
+    }
     }
     window.addEventListener('DOMContentLoaded', function() {
         const savedState = localStorage.getItem('agenticToggleState');

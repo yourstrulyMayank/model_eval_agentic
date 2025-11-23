@@ -5,3 +5,5 @@ mlruns/
 new.txt
 results/
 static/plots/
+frtbsa_run_*
+frtbsa_output/

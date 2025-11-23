@@ -1342,6 +1342,22 @@ def agentic_summarize_results(model_type, model_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+## Risk Imports #
+from routes.risk import risk_blueprints
+
+## Risk Blueprints ##
+for bp in risk_blueprints:
+    app.register_blueprint(bp)
+
+
+@app.route('/risk/<risk_model>')
+def risk_model_page(risk_model):
+    # Render template risk_<modelname>.html, e.g. risk_frtbsa.html
+    template_name = f"risk_{risk_model}.html"
+    try:
+        return render_template(template_name, model_name=risk_model.upper())
+    except Exception:
+        return f"Risk model page for '{risk_model}' not found.", 404
 
 if __name__ == '__main__':
     app.run(debug=True)
